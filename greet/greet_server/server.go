@@ -8,7 +8,9 @@ import (
 	"net"
 )
 
-type server struct{}
+type server struct {
+	greetpb.GreetServiceServer
+}
 
 func main() {
 	fmt.Println("Hello, World!")
@@ -22,4 +24,7 @@ func main() {
 
 	greetpb.RegisterGreetServiceServer(s, &server{})
 
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
