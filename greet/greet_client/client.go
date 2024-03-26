@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"grpc-go/greet/greetpb"
 	"io"
 	"log"
@@ -24,9 +26,10 @@ func main() {
 	client := greetpb.NewGreetServiceClient(conn)
 
 	//doUnary(client)
+	doErrUnary(client)
 	//doServerStreaming(client)
 	//doClientStreaming(client)
-	doBiDiStreaming(client)
+	//doBiDiStreaming(client)
 
 }
 
@@ -41,6 +44,35 @@ func doUnary(c greetpb.GreetServiceClient) {
 	res, err := c.Greet(context.Background(), req)
 	if err != nil {
 		log.Fatalf("error while calling Greet RPC: %v", err)
+	}
+	log.Printf("Response from Greet: %v", res.Result)
+}
+
+func doErrUnary(c greetpb.GreetServiceClient) {
+	fmt.Println("Starting to do an error Unary RPC...")
+	req := &greetpb.GreetRequest{
+		Greeting: &greetpb.Greeting{
+			FirstName: "",
+			LastName:  "Nguyen Van",
+		},
+	}
+
+	res, err := c.Greet(context.Background(), req)
+
+	if err != nil {
+		respErr, ok := status.FromError(err)
+		if ok {
+			// actual error from gRPC (user error)
+			fmt.Printf("Error message from server: %v\n", respErr.Message())
+			fmt.Println(respErr.Code())
+			if respErr.Code() == codes.InvalidArgument {
+				fmt.Println("We probably sent an empty string of first name!")
+				return
+			}
+		} else {
+			log.Fatalf("Big Error calling Greet: %v", err)
+			return
+		}
 	}
 	log.Printf("Response from Greet: %v", res.Result)
 }

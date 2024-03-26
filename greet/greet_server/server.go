@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"grpc-go/greet/greetpb"
 	"io"
 	"log"
@@ -20,6 +22,14 @@ type server struct {
 func (*server) Greet(ctx context.Context, req *greetpb.GreetRequest) (*greetpb.GreetResponse, error) {
 	fmt.Printf("Greet function was invoked with %v\n", req)
 	firstName := req.GetGreeting().GetFirstName()
+
+	if len(firstName) == 0 {
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			fmt.Sprintf("Received a null first name: %v", firstName),
+		)
+	}
+
 	result := "Hello " + firstName
 	res := &greetpb.GreetResponse{
 		Result: result,
