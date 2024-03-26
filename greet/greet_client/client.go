@@ -8,6 +8,7 @@ import (
 	"grpc-go/greet/greetpb"
 	"io"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -24,7 +25,8 @@ func main() {
 
 	//doUnary(client)
 	//doServerStreaming(client)
-	doClientStreaming(client)
+	//doClientStreaming(client)
+	doBiDiStreaming(client)
 
 }
 
@@ -101,23 +103,95 @@ func doClientStreaming(c greetpb.GreetServiceClient) {
 			},
 		},
 	}
-
 	stream, err := c.LongGreet(context.Background())
 	if err != nil {
 		log.Fatalf("error while calling LongGreet: %v", err)
 	}
 
-	// we iterate over our slice and send each message individually
+	// we iterate over our LongGreetRequests slice and send each message individually to the server.
 	for _, req := range requests {
 		fmt.Printf("Sending req: %v\n", req)
 		stream.Send(req)
 		time.Sleep(1000 * time.Millisecond)
 	}
 
+	// Close the stream and retrieve the response.
 	res, err := stream.CloseAndRecv()
 	if err != nil {
 		log.Fatalf("error while receiving response from LongGreet: %v", err)
 	}
 	fmt.Printf("LongGreet Response: %v\n", res)
+}
 
+func doBiDiStreaming(c greetpb.GreetServiceClient) {
+	fmt.Println("Starting to do a BiDi Streaming RPC...")
+
+	// we create a stream by invoking the client
+	stream, err := c.GreetEveryone(context.Background())
+	if err != nil {
+		log.Fatalf("Error while creating stream: %v", err)
+		return
+	}
+
+	requests := []*greetpb.GreetEveryoneRequest{
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Tri",
+			},
+		},
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Nguyen",
+			},
+		},
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Van",
+			},
+		},
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Tien",
+			},
+		},
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Sinh",
+			},
+		},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// Start a goroutine to send messages to the server.
+	go func() {
+		defer wg.Done()
+		// Loop through the greetings and send them to the server.
+		for _, req := range requests {
+			time.Sleep(1000 * time.Millisecond)
+			fmt.Printf("Sending message: %v\n", req)
+			stream.Send(req)
+		}
+		stream.CloseSend()
+	}()
+
+	// Start a goroutine to receive messages from the server.
+	go func() {
+		defer wg.Done()
+		// Loop until the stream is closed.
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Error while receiving: %v", err)
+			}
+			fmt.Printf("Received: %v\n", res.GetResult())
+		}
+	}()
+
+	// Wait for both goroutines to complete.
+	wg.Wait()
 }
