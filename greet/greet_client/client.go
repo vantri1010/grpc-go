@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"grpc-go/greet/greetpb"
@@ -15,8 +16,20 @@ import (
 )
 
 func main() {
+	tls := true
+	opts := grpc.WithTransportCredentials(insecure.NewCredentials())
+	if tls {
+		certFile := "ssl/ca.crt" // Certificate Authority Trust certificate
+		creds, sslErr := credentials.NewClientTLSFromFile(certFile, "")
+		if sslErr != nil {
+			log.Fatalf("Error while loading CA trust certificate: %v", sslErr)
+			return
+		}
+		opts = grpc.WithTransportCredentials(creds)
+	}
+
 	// creates a client connection to the server
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("localhost:50051", opts)
 	if err != nil {
 		log.Fatalf("Could not connect : %v", err)
 	}
@@ -32,7 +45,7 @@ func main() {
 	//doBiDiStreaming(client)
 
 	//context cancel after 4 seconds while server waiting within 3 seconds
-	doUnaryWithDeadline(client, 4*time.Second)
+	doUnaryWithDeadline(client, 3*time.Second)
 
 }
 
