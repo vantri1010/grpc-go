@@ -227,7 +227,7 @@ func main() {
 	}
 
 	fmt.Println("Blog Service Started")
-	collection = client.Database("mydb").Collection("blog")
+	collection = client.Database("grpc-go-blog").Collection("blog")
 
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
