@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -16,6 +17,18 @@ import (
 )
 
 func main() {
+	// Define CLI flags
+	operation := flag.String("operation", "", "Type of gRPC operation: doUnary, doErrUnary, doServerStreaming, doClientStreaming, doBiDiStreaming, doUnaryWithDeadline")
+	deadline := flag.Int("deadline", 3, "Deadline in seconds for doUnaryWithDeadline operation (default: 3 seconds)")
+	flag.Parse()
+
+	if *operation == "" {
+		fmt.Println("Error: operation flag is required")
+		flag.Usage()
+		return
+	}
+
+	// TLS and connection setup
 	tls := true
 	opts := grpc.WithTransportCredentials(insecure.NewCredentials())
 	if tls {
@@ -38,15 +51,23 @@ func main() {
 	// created gRPC client
 	client := greetpb.NewGreetServiceClient(conn)
 
-	//doUnary(client)
-	//doErrUnary(client)
-	//doServerStreaming(client)
-	//doClientStreaming(client)
-	//doBiDiStreaming(client)
-
-	//context cancel after 4 seconds while server waiting within 3 seconds
-	doUnaryWithDeadline(client, 3*time.Second)
-
+	// Handle operations based on CLI input
+	switch *operation {
+	case "doUnary":
+		doUnary(client)
+	case "doErrUnary":
+		doErrUnary(client)
+	case "doServerStreaming":
+		doServerStreaming(client)
+	case "doClientStreaming":
+		doClientStreaming(client)
+	case "doBiDiStreaming":
+		doBiDiStreaming(client)
+	case "doUnaryWithDeadline":
+		doUnaryWithDeadline(client, time.Duration(*deadline)*time.Second)
+	default:
+		log.Fatalf("Unknown operation: %v", *operation)
+	}
 }
 
 func doUnary(c greetpb.GreetServiceClient) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -13,6 +14,15 @@ import (
 )
 
 func main() {
+	// Define CLI flags
+	operation := flag.String("operation", "", "Type of gRPC operation: doUnary, doServerStreaming, doClientStreaming, doBiDiStreaming")
+	flag.Parse()
+
+	if *operation == "" {
+		fmt.Println("Error: operation flag is required")
+		flag.Usage()
+		return
+	}
 
 	fmt.Println("Calculator Client")
 	cc, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
@@ -22,17 +32,22 @@ func main() {
 	defer cc.Close()
 
 	c := calculatorpb.NewCalculatorServiceClient(cc)
-	// fmt.Printf("Created client: %f", c)
 
-	// doUnary(c)
-
-	// doServerStreaming(c)
-
-	// doClientStreaming(c)
-
-	// doBiDiStreaming(c)
-
-	doErrorUnary(c)
+	// Handle operations based on CLI input
+	switch *operation {
+	case "doUnary":
+		doUnary(c)
+	case "doServerStreaming":
+		doServerStreaming(c)
+	case "doClientStreaming":
+		doClientStreaming(c)
+	case "doBiDiStreaming":
+		doBiDiStreaming(c)
+	case "doErrorUnary":
+		doErrorUnary(c)
+	default:
+		log.Fatalf("Unknown operation: %v", *operation)
+	}
 }
 
 func doUnary(c calculatorpb.CalculatorServiceClient) {
