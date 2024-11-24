@@ -9,4 +9,3 @@ protoc --go-grpc_out=./ --go-grpc_opt=paths=source_relative calculator/calculato
 protoc --go_out=./ --go_opt=paths=source_relative blog/blogpb/blog.proto
 protoc --go-grpc_out=./ --go-grpc_opt=paths=source_relative blog/blogpb/blog.proto
 
-

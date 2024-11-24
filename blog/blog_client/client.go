@@ -2,92 +2,92 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"log"
+	"os"
+
 	"google.golang.org/grpc"
 	"grpc-go/blog/blogpb"
-	"io"
-	"log"
 )
 
 func main() {
+	// Define CLI flags
+	operation := flag.String("operation", "", "CRUD operation: create, read, update, delete")
+	blogID := flag.String("id", "", "ID of the blog (required for read, update, delete)")
+	authorID := flag.String("author", "", "Author ID of the blog (required for create/update)")
+	title := flag.String("title", "", "Title of the blog (required for create/update)")
+	content := flag.String("content", "", "Content of the blog (required for create/update)")
+	flag.Parse()
 
-	fmt.Println("Blog Client")
+	if *operation == "" {
+		fmt.Println("Error: operation flag is required")
+		flag.Usage()
+		os.Exit(1)
+	}
 
-	opts := grpc.WithInsecure()
-
-	cc, err := grpc.Dial("localhost:50051", opts)
+	// Connect to gRPC server
+	cc, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("could not connect: %v", err)
 	}
-	defer cc.Close() // Maybe this should be in a separate function and the error handled?
+	defer cc.Close()
 
 	c := blogpb.NewBlogServiceClient(cc)
 
-	// create Blog
-	fmt.Println("Creating the blog")
-	blog := &blogpb.Blog{
-		AuthorId: "Stephane",
-		Title:    "My First Blog",
-		Content:  "Content of the first blog",
-	}
-	createBlogRes, err := c.CreateBlog(context.Background(), &blogpb.CreateBlogRequest{Blog: blog})
-	if err != nil {
-		log.Fatalf("Unexpected error: %v", err)
-	}
-	fmt.Printf("Blog has been created: %v", createBlogRes)
-	blogID := createBlogRes.GetBlog().GetId()
-
-	// read Blog
-	fmt.Println("Reading the blog")
-
-	_, err2 := c.ReadBlog(context.Background(), &blogpb.ReadBlogRequest{BlogId: "5bdc29e661b75adcac496cf4"})
-	if err2 != nil {
-		fmt.Printf("Error happened while reading: %v \n", err2)
-	}
-
-	readBlogReq := &blogpb.ReadBlogRequest{BlogId: blogID}
-	readBlogRes, readBlogErr := c.ReadBlog(context.Background(), readBlogReq)
-	if readBlogErr != nil {
-		fmt.Printf("Error happened while reading: %v \n", readBlogErr)
-	}
-
-	fmt.Printf("Blog was read: %v \n", readBlogRes)
-
-	// update Blog
-	newBlog := &blogpb.Blog{
-		Id:       blogID,
-		AuthorId: "Changed Author",
-		Title:    "My First Blog (edited)",
-		Content:  "Content of the first blog, with some awesome additions!",
-	}
-	updateRes, updateErr := c.UpdateBlog(context.Background(), &blogpb.UpdateBlogRequest{Blog: newBlog})
-	if updateErr != nil {
-		fmt.Printf("Error happened while updating: %v \n", updateErr)
-	}
-	fmt.Printf("Blog was updated: %v\n", updateRes)
-
-	// delete Blog
-	deleteRes, deleteErr := c.DeleteBlog(context.Background(), &blogpb.DeleteBlogRequest{BlogId: blogID})
-
-	if deleteErr != nil {
-		fmt.Printf("Error happened while deleting: %v \n", deleteErr)
-	}
-	fmt.Printf("Blog was deleted: %v \n", deleteRes)
-
-	// list Blogs
-
-	stream, err := c.ListBlog(context.Background(), &blogpb.ListBlogRequest{})
-	if err != nil {
-		log.Fatalf("error while calling ListBlog RPC: %v", err)
-	}
-	for {
-		res, err := stream.Recv()
-		if err == io.EOF {
-			break
+	switch *operation {
+	case "create":
+		if *authorID == "" || *title == "" || *content == "" {
+			log.Fatalf("Error: author, title, and content are required for create operation")
 		}
+		blog := &blogpb.Blog{
+			AuthorId: *authorID,
+			Title:    *title,
+			Content:  *content,
+		}
+		createBlogRes, err := c.CreateBlog(context.Background(), &blogpb.CreateBlogRequest{Blog: blog})
 		if err != nil {
-			log.Fatalf("Something happened: %v", err)
+			log.Fatalf("Unexpected error: %v", err)
 		}
-		fmt.Println(res.GetBlog())
+		fmt.Printf("Blog has been created: %v\n", createBlogRes)
+
+	case "read":
+		if *blogID == "" {
+			log.Fatalf("Error: id is required for read operation")
+		}
+		readBlogRes, err := c.ReadBlog(context.Background(), &blogpb.ReadBlogRequest{BlogId: *blogID})
+		if err != nil {
+			log.Fatalf("Error while reading the blog: %v", err)
+		}
+		fmt.Printf("Blog found: %v\n", readBlogRes)
+
+	case "update":
+		if *blogID == "" || *authorID == "" || *title == "" || *content == "" {
+			log.Fatalf("Error: id, author, title, and content are required for update operation")
+		}
+		blog := &blogpb.Blog{
+			Id:       *blogID,
+			AuthorId: *authorID,
+			Title:    *title,
+			Content:  *content,
+		}
+		updateBlogRes, err := c.UpdateBlog(context.Background(), &blogpb.UpdateBlogRequest{Blog: blog})
+		if err != nil {
+			log.Fatalf("Error while updating the blog: %v", err)
+		}
+		fmt.Printf("Blog has been updated: %v\n", updateBlogRes)
+
+	case "delete":
+		if *blogID == "" {
+			log.Fatalf("Error: id is required for delete operation")
+		}
+		deleteBlogRes, err := c.DeleteBlog(context.Background(), &blogpb.DeleteBlogRequest{BlogId: *blogID})
+		if err != nil {
+			log.Fatalf("Error while deleting the blog: %v", err)
+		}
+		fmt.Printf("Blog has been deleted: %v\n", deleteBlogRes)
+
+	default:
+		log.Fatalf("Unknown operation: %v", *operation)
 	}
 }
