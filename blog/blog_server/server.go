@@ -217,7 +217,7 @@ func main() {
 
 	fmt.Println("Connecting to MongoDB")
 	// connect to MongoDB
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27018/"))
+	client, err := mongo.NewClient(options.Client().ApplyURI(os.Getenv("URI")))
 	if err != nil {
 		log.Fatal(err)
 	}
