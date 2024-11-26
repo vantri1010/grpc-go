@@ -10,12 +10,11 @@ services:
     init: true
     working_dir: /root/go/src
     volumes:
-      - type: bind
-        source: /var/run/docker.sock
-        target: /var/run/docker.sock
       - .:/root/go/src
     networks:
       - local_network
+    environment:
+      - URI=mongodb://mongo:27017/
   mongo:
     image: mongo:6.0
     container_name: mongodb
